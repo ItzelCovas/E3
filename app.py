@@ -89,11 +89,11 @@ with tab1:
     col_txt1, col_txt2 = st.columns(2)
 
     with col_txt1:
-        st.markdown(f"** {titulo_1}** (Base)")
+        st.markdown(f"**- {titulo_1}** (Base)")
         st.text_area("Letra 1", texto_1, height=300, label_visibility="collapsed")
 
     with col_txt2:
-        st.markdown(f"** {titulo_2}** (Comparación)")
+        st.markdown(f"**- {titulo_2}** (Comparación)")
         st.text_area("Letra 2", texto_2, height=300, label_visibility="collapsed")
 
     # 5. MAPA DE CALOR
@@ -147,10 +147,20 @@ with tab1:
 
 # PESTAÑA 2
 with tab2:
-    st.header("Panorama Completo de la Colección")
-    st.write("Este mapa muestra cómo se relacionan todas las canciones entre sí.")
+    st.header("Matriz de Similitud Global entre Todas las Canciones")
     
-    if st.button("Calcular Matriz Total de Taylor Swift"):
+    st.markdown("""
+    Esta matriz cruza **todas las canciones contra todas**.
+    
+    **Guía de colores:**
+    * 🟨 **Amarillo brillante:** Alta similitud (canciones muy parecidas).
+    * 🟦 **Morado oscuro:** Baja similitud (temáticas opuestas).
+    * 📉 **La Diagonal:** Siempre es amarilla porque compara cada canción consigo misma.
+    """)
+    
+    st.write("Se muestra cómo se relacionan todas las canciones entre sí.")
+    
+    if st.button("Calcular Matriz total"):
         with st.spinner("Calculando interacciones entre todas las canciones..."):
             matriz_global = cosine_similarity(st.session_state.embeddings)
             
