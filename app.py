@@ -108,68 +108,121 @@ with tab1:
             emb_2 = model.encode(frases_2)
             matriz = cosine_similarity(emb_1, emb_2)
             
-            c1, c_mapa, c2 = st.columns([1, 4, 1]) 
+            c_mapa, clado = st.columns([16, 3]) 
             
             with c_mapa:
                 fig = px.imshow(
                     matriz,
-                    x=[f"T2: {f[:25]}..." for f in frases_2],
-                    y=[f"T1: {f[:25]}..." for f in frases_1],
+                    x=[f"T2: {f}" for f in frases_2],
+                    y=[f"T1: {f}" for f in frases_1],
                     color_continuous_scale="RdBu_r",
                     aspect="equal",
                     title=f"Similitud: {titulo_1} vs. {titulo_2}"
                 )
                 
                 fig.update_layout(
-                    width=1000,
-                    height=1000,
-                    xaxis_tickangle=-90, 
+                    width=900,
+                    height=900,
                     autosize=False,
                     
-                    title_x=0.53,         
+                    title_x=0.50,         
                     title_xanchor='center',
-                    title_y=0.95,
+                    title_y=0.98,
 
-                    #margin=dict(t=100, b=90, l=30, r=50),  
+                    # 2. Márgenes 
+                    margin=dict(t=50, b=50, l=100, r=150), 
                     
+                    xaxis=dict(showticklabels=True, side='bottom'), 
+                    yaxis=dict(showticklabels=True), 
+                    
+                    # 4. Barra de color
                     coloraxis_colorbar=dict(
-                        len=0.7,
+                        len=0.98,
                         yanchor="middle",
                         y=0.5,
+                        x=0.85,
+                        xpad=9,
                         title=dict(text="Similitud", side="right")
                     )
                 )
+                
+                fig.update_traces(hovertemplate="<b>Frase T2:</b> %{x}<br><b>Frase T1:</b> %{y}<br><b>Similitud:</b> %{z:.2f}<extra></extra>")
 
-                st.plotly_chart(fig, use_container_width=False)
+                st.plotly_chart(fig, use_container_width=True)
                 
         else:
             st.warning("Letras insuficientes para comparar.")
 
 # PESTAÑA 2
 with tab2:
-    st.header("Matriz de Similitud Global entre Todas las Canciones")
+    st.header("Matriz de Similitud Global (Colección Completa)")
     
     st.markdown("""
     Esta matriz cruza **todas las canciones contra todas**.
-    
-    **Guía de colores:**
-    * 🟨 **Amarillo brillante:** Alta similitud (canciones muy parecidas).
-    * 🟦 **Morado oscuro:** Baja similitud (temáticas opuestas).
-    * 📉 **La Diagonal:** Siempre es amarilla porque compara cada canción consigo misma.
+    * Usa el **zoom** y el **cursor** sobre la matriz para identificar pares interesantes.
+    * Luego selecciónalos abajo para compararlos.
     """)
     
-    st.write("Se muestra cómo se relacionan todas las canciones entre sí.")
-    
-    if st.button("Calcular Matriz total"):
-        with st.spinner("Calculando interacciones entre todas las canciones..."):
+    # 1. Si no existe la variable en memoria, la creamos apagada
+    if 'mostrar_matriz_global' not in st.session_state:
+        st.session_state.mostrar_matriz_global = False
+
+    # 2. Si se aprieta el botón, encendemos la variable
+    if st.button("Generar Matriz Global"):
+        st.session_state.mostrar_matriz_global = True
+
+    # 3. Todo el código depende de la variable, NO del botón directamente
+    if st.session_state.mostrar_matriz_global:
+        
+        with st.spinner("Calculando interacciones..."):
+            # Cálculo matemático
             matriz_global = cosine_similarity(st.session_state.embeddings)
+            nombres = df['track_title'].tolist()
             
             fig_g = px.imshow(
                 matriz_global,
-                x=df['track_title'],
-                y=df['track_title'],
+                x=nombres,
+                y=nombres,
                 color_continuous_scale="Viridis",
-                title="Matriz de Similitud Global"
+                title="Mapa de Calor: Toda la Colección"
             )
-            fig_g.update_layout(width=900, height=900)
+            
+            fig_g.update_layout(
+                width=1200, 
+                height=1200,
+                xaxis=dict(showticklabels=True, title="Canciones (Eje X)"),
+                yaxis=dict(showticklabels=True, title="Canciones (Eje Y)"),
+                hovermode='closest' 
+            )
+            
+            fig_g.update_traces(
+                hovertemplate="<b>Canción A:</b> %{y}<br><b>Canción B:</b> %{x}<br><b>Similitud:</b> %{z:.2f}<extra></extra>"
+            )
+
             st.plotly_chart(fig_g, use_container_width=True)
+            
+            st.divider()
+            
+            # sección de abajo de selección para comparar
+            st.subheader("Comparar par seleccionado")
+            st.info("Selecciona aquí las dos canciones que viste en la matriz:")
+            
+            col_sel_g1, col_sel_g2 = st.columns(2)
+            
+            with col_sel_g1:
+                # El key es importante para que no se confunda con otros selectbox
+                sel_global_1 = st.selectbox("Canción A", df['track_title'].unique(), key="sel_g1")
+                txt_g1 = df[df['track_title'] == sel_global_1]['lyric'].values[0]
+                st.text_area("Texto A", txt_g1, height=200, key="txt_g1")
+                
+            with col_sel_g2:
+                sel_global_2 = st.selectbox("Canción B", df['track_title'].unique(), key="sel_g2")
+                txt_g2 = df[df['track_title'] == sel_global_2]['lyric'].values[0]
+                st.text_area("Texto B", txt_g2, height=200, key="txt_g2")
+            
+            # Cálculo de similitud puntual
+            emb_g1 = st.session_state.embeddings[df[df['track_title'] == sel_global_1].index[0]]
+            emb_g2 = st.session_state.embeddings[df[df['track_title'] == sel_global_2].index[0]]
+            sim_score = cosine_similarity([emb_g1], [emb_g2])[0][0]
+            
+            st.success(f"Similitud Global entre '{sel_global_1}' y '{sel_global_2}': **{sim_score:.2%}**")
